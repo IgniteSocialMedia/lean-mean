@@ -3,17 +3,12 @@
 /**
  * Module dependencies.
  */
-var express = require('express'),
-    mean = require('meanio'),
-    consolidate = require('consolidate'),
-    mongoStore = require('connect-mongo')(express),
-    flash = require('connect-flash'),
-    helpers = require('view-helpers'),
-    config = require('./config'),
-    expressValidator = require('express-validator'),
-    appPath = process.cwd(),
-    fs = require('fs'),
-    assetmanager = require('assetmanager');
+var express = require('express');
+var mean = require('meanio');
+var config = require('./config');
+var handlebars = require('express3-handlebars');
+var appPath = process.cwd();
+var fs = require('fs');
 
 module.exports = function(app, passport, db) {
     app.set('showStackError', true);
@@ -40,14 +35,19 @@ module.exports = function(app, passport, db) {
         app.use(express.logger('dev'));
     }
 
-    // assign the template engine to .html files
-    app.engine('html', consolidate[config.templateEngine]);
-
-    // set .html as the default extension
-    app.set('view engine', 'html');
-
-    // Set views path, template engine and default layout
+    // Set views path
     app.set('views', config.root + '/server/views');
+
+    // assign the template engine to .html files
+    var hbConfig = {
+        extname: '.html',
+        layoutsDir: 'server/views/layouts',
+        partialsDir: 'server/views/includes'
+    };
+    app.engine('html', handlebars.create(hbConfig).engine);
+    app.set('view engine', 'html');
+    app.locals.layout = 'default.html';
+
 
     // Enable jsonp
     app.enable('jsonp callback');
@@ -59,46 +59,7 @@ module.exports = function(app, passport, db) {
         // Request body parsing middleware should be above methodOverride
         app.use(express.urlencoded());
         app.use(express.json());
-        app.use(expressValidator());
         app.use(express.methodOverride());
-
-        // Import your asset file
-        var assets = require('./assets.json');
-        assetmanager.init({
-            js: assets.js,
-            css: assets.css,
-            debug: (process.env.NODE_ENV !== 'production'),
-            webroot: 'public/public'
-        });
-        // Add assets to local variables
-        app.use(function(req, res, next) {
-            res.locals({
-                assets: assetmanager.assets
-            });
-            next();
-        });
-
-        // Express/Mongo session storage
-        app.use(express.session({
-            secret: config.sessionSecret,
-            store: new mongoStore({
-                db: db.connection.db,
-                collection: config.sessionCollection
-            })
-        }));
-
-        // Dynamic helpers
-        app.use(helpers(config.app.name));
-
-        // Use passport session
-        app.use(passport.initialize());
-        app.use(passport.session());
-
-        //mean middleware from modules before routes
-        app.use(mean.chainware.before);
-
-        // Connect flash for flash messages
-        app.use(flash());
 
         // Routes should be at the last
         app.use(app.router);
