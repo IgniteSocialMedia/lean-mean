@@ -4,13 +4,12 @@
  * Module dependencies.
  */
 var express = require('express');
-var mean = require('meanio');
 var config = require('./config');
 var handlebars = require('express3-handlebars');
 var appPath = process.cwd();
 var fs = require('fs');
 
-module.exports = function(app, passport, db) {
+module.exports = function(app) {
     app.set('showStackError', true);
 
     // Prettify HTML
@@ -68,57 +67,36 @@ module.exports = function(app, passport, db) {
         app.use(express.favicon());
         app.use('/public', express.static(config.root + '/public'));
 
-        app.get('/modules/aggregated.js', function(req, res) {
-            res.setHeader('content-type', 'text/javascript');
-            res.send(mean.aggregated.js);
+        bootstrapRoutes();
+
+        // Assume "not found" in the error msgs is a 404. this is somewhat
+        // silly, but valid, you can do whatever you like, set properties,
+        // use instanceof etc.
+        app.use(function(err, req, res, next) {
+            // Treat as 404
+            if (~err.message.indexOf('not found')) return next();
+
+            // Log it
+            console.error(err.stack);
+
+            // Error page
+            res.status(500).render('500', {
+                error: err.stack
+            });
         });
 
-
-        app.get('/modules/aggregated.css', function(req, res) {
-            res.setHeader('content-type', 'text/css');
-            res.send(mean.aggregated.css);
+        // Assume 404 since no middleware responded
+        app.use(function(req, res) {
+            res.status(404).render('404', {
+                url: req.originalUrl,
+                error: 'Not found'
+            });
         });
-
-        mean.events.on('modulesFound', function() {
-
-            mean.modules.forEach(function(module) {
-                app.use('/' + module.name, express.static(config.root + '/node_modules/' + module.name + '/public'));
-            });
-
-            bootstrapRoutes();
-
-            //mean middlware from modules after routes
-            app.use(mean.chainware.after);
-
-            // Assume "not found" in the error msgs is a 404. this is somewhat
-            // silly, but valid, you can do whatever you like, set properties,
-            // use instanceof etc.
-            app.use(function(err, req, res, next) {
-                // Treat as 404
-                if (~err.message.indexOf('not found')) return next();
-
-                // Log it
-                console.error(err.stack);
-
-                // Error page
-                res.status(500).render('500', {
-                    error: err.stack
-                });
-            });
-
-            // Assume 404 since no middleware responded
-            app.use(function(req, res) {
-                res.status(404).render('404', {
-                    url: req.originalUrl,
-                    error: 'Not found'
-                });
-            });
-
-        });
-
-
     });
 
+    /**
+     * Autoload all routes under '/server/routes'
+     */
     function bootstrapRoutes() {
         var routes_path = appPath + '/server/routes';
         var walk = function(path) {
@@ -127,7 +105,7 @@ module.exports = function(app, passport, db) {
                 var stat = fs.statSync(newPath);
                 if (stat.isFile()) {
                     if (/(.*)\.(js$|coffee$)/.test(file)) {
-                        require(newPath)(app, passport);
+                        require(newPath)(app);
                     }
                     // We skip the app/routes/middlewares directory as it is meant to be
                     // used and shared by routes as further middlewares and is not a
