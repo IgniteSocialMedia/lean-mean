@@ -1,12 +1,28 @@
 'use strict';
 
 module.exports = function(grunt) {
+    require('load-grunt-tasks')(grunt);
+
     // Project Configuration
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
         watch: {
-           
+            css: {
+                files: ['public/sass/*.scss'],
+                tasks: ['compass']
+            }
         },
+
+        compass: {
+          dist: {
+            options: {
+              sassDir: 'public/sass',
+              cssDir: 'public/css',
+              imagesDir: 'public/images'
+            }
+          }
+        },
+
         uglify: {
             options: {
                 mangle: false
@@ -15,11 +31,13 @@ module.exports = function(grunt) {
                 files: '<%= assets.js %>'
             }
         },
+
         cssmin: {
             combine: {
                 files: '<%= assets.css %>'
             }
         },
+
         nodemon: {
             dev: {
                 script: 'server.js',
@@ -36,12 +54,19 @@ module.exports = function(grunt) {
                 }
             }
         },
+
         concurrent: {
-            tasks: ['nodemon', 'watch'],
-            options: {
-                logConcurrentOutput: true
+            server: {
+                tasks: ['nodemon', 'watch'],
+                options: {
+                  logConcurrentOutput: true
+                }
+            },
+            compile: {
+                tasks: ['compass']
             }
         },
+
         mochaTest: {
             options: {
                 reporter: 'spec',
@@ -49,20 +74,13 @@ module.exports = function(grunt) {
             },
             src: ['test/mocha/**/*.js']
         },
+
         env: {
             test: {
                 NODE_ENV: 'test'
             }
         }
     });
-
-    //Load NPM tasks
-    grunt.loadNpmTasks('grunt-contrib-cssmin');
-    grunt.loadNpmTasks('grunt-contrib-uglify');
-    grunt.loadNpmTasks('grunt-contrib-watch');
-    grunt.loadNpmTasks('grunt-nodemon');
-    grunt.loadNpmTasks('grunt-concurrent');
-    grunt.loadNpmTasks('grunt-env');
 
     //Making grunt default to force in order not to break the project.
     grunt.option('force', true);
@@ -71,7 +89,7 @@ module.exports = function(grunt) {
     if (process.env.NODE_ENV === 'production') {
         grunt.registerTask('default', ['cssmin', 'uglify', 'concurrent']);
     } else {
-        grunt.registerTask('default', ['concurrent']);
+        grunt.registerTask('default', ['concurrent:server']);
     }
 
     //Test task.

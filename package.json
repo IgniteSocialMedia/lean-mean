@@ -30,6 +30,11 @@
     "grunt-contrib-watch": "latest",
     "grunt-contrib-csslint": "^0.2.0",
     "grunt-nodemon": "0.2.0",
-    "grunt-concurrent": "latest"
+    "grunt-concurrent": "latest",
+    "grunt-contrib-sass": "~0.7.3",
+    "grunt-contrib-compass": "0.7.1",
+    "node-compass": "^0.2.3",
+    "node-sass": "^0.8.4",
+    "load-grunt-tasks": "^0.4.0"
   }
 }
